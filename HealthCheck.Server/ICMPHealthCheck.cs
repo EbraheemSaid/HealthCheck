@@ -5,8 +5,14 @@ namespace HealthCheck.Server
 {
     public class ICMPHealthCheck : IHealthCheck
     {
-        private readonly string Host = $"10.0.0.0";
-        private readonly int HealthyRoundTrip = 300;
+        private readonly string Host;
+        private readonly int HealthyRoundTrip;
+
+        public ICMPHealthCheck(string host, int healthyRoundTrip)
+        {
+            Host = host;
+            HealthyRoundTrip = healthyRoundTrip;
+        }
 
         public async Task<HealthCheckResult> CheckHealthAsync(
             HealthCheckContext context,
@@ -20,12 +26,14 @@ namespace HealthCheck.Server
                 switch (reply.Status)
                 {
                     case IPStatus.Success:
+                        var msg = $"ICMP to {Host} took {reply.RoundtripTime} ms.";
                         return (reply.RoundtripTime > HealthyRoundTrip)
-                            ? HealthCheckResult.Degraded()
-                            : HealthCheckResult.Healthy();
+                            ? HealthCheckResult.Degraded(msg)
+                            : HealthCheckResult.Healthy(msg);
 
                     default:
-                        return HealthCheckResult.Unhealthy();
+                        var err = $"ICMP to {Host} failed: {reply.Status}";
+                        return HealthCheckResult.Unhealthy(err);
 
 
                 }
@@ -33,7 +41,8 @@ namespace HealthCheck.Server
             }
             catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy();
+                var err = $"ICMP failed: {ex.Message}";
+                return HealthCheckResult.Unhealthy(err);
             }
         }
     }
